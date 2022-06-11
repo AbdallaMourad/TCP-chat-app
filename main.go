@@ -5,8 +5,6 @@ import (
 	"io"
 	"log"
 	"net"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -14,54 +12,30 @@ const (
 	PORT = 8080
 )
 
-type Room struct {
-	Users []User
-}
-
-type User struct {
-	Name       string
-	ID         string
-	Buffer     []byte
-	Connection net.Conn
-}
-
-type Message struct {
-	Sender  User
-	Content string
-}
-
 func main() {
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", IP, PORT))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	system := User{
-		Name: "System",
-	}
+	system := NewUser("System", nil)
 
-	room := Room{[]User{system}}
+	room := NewRoom(*system)
 	newUser := make(chan User)
 	newMessage := make(chan Message, 100)
 
 	go listentonewConnections(listener, newUser)
-	go readMessages(&room, newMessage)
+	go readMessages(room, newMessage)
 
 	for {
 		select {
 		case msg := <-newMessage:
-			sendMessageToRoom(room, msg)
+			go room.SendMessageToRoom(msg)
 			msg.Sender.Buffer = []byte("")
 		case user := <-newUser:
-			go appendConnectionToRoom(user, &room)
+			go room.JoinRoom(user)
 		}
 	}
-}
-
-func appendConnectionToRoom(user User, room *Room) {
-	greet(room.Users[0], &user)
-
-	room.Users = append(room.Users, user)
 }
 
 func listentonewConnections(listener net.Listener, user chan User) {
@@ -71,58 +45,36 @@ func listentonewConnections(listener net.Listener, user chan User) {
 			log.Printf("Error while listining to connections %s\n", err)
 		}
 
-		user <- User{Connection: conn}
+		newUser := NewUser("", conn)
+		user <- *newUser
 	}
-}
-
-func greet(from User, to *User) {
-	name := make([]byte, 20)
-	id := uuid.New()
-	sendMessage(User{}, *to, []byte(fmt.Sprintf("Name: ")))
-	n, err := to.Connection.Read(name)
-	if err != nil {
-		log.Println("Unable to get the name ", err)
-	}
-	to.Name = string(name[:n-1])
-	to.ID = id.String()
-	to.Buffer = make([]byte, 100)
-	sendMessage(from, *to, []byte(fmt.Sprintf("Hi %s\n", to.Name)))
 }
 
 func readMessages(room *Room, done chan Message) {
+	arr := make([]func(), len(room.Users))
+
 	for {
 		for i := 1; i < len(room.Users); i++ {
-			connection := room.Users[i].Connection
-			buffer := room.Users[i].Buffer
-
-			n, err := connection.Read(buffer)
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				log.Println(err)
-			}
-			done <- Message{
-				Sender:  room.Users[i],
-				Content: string(buffer[:n]),
+			if len(arr) < len(room.Users) {
+				arr = append(arr, func() {
+					go readMessage(room.Users[i], done)
+				})
+				arr[i]()
 			}
 		}
 	}
 }
 
-func sendMessageToRoom(room Room, message Message) {
-	for i := 1; i < len(room.Users); i++ {
-		currUser := room.Users[i]
-		if message.Sender.ID != currUser.ID {
-			sendMessage(message.Sender, room.Users[i], message.Sender.Buffer)
+func readMessage(user User, done chan Message) {
+	n, err := user.Connection.Read(user.Buffer)
+	if err != nil {
+		if err == io.EOF {
+			return
 		}
+		log.Println(err)
 	}
-}
-
-func sendMessage(from, to User, message []byte) {
-	var msg = message
-	if from.Name != "" {
-		msg = []byte(fmt.Sprintf("%s: %s", from.Name, string(message)))
+	done <- Message{
+		Sender:  user,
+		Content: string(user.Buffer[:n]),
 	}
-	to.Connection.Write(msg)
 }
