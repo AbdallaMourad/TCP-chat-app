@@ -4,15 +4,28 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+
+	"github.com/joho/godotenv"
 )
 
-const (
-	IP   = "127.0.0.1"
-	PORT = 8080
+var (
+	IP   = ""
+	PORT = ""
 )
+
+func init() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Printf("Error while reading .env %s\n", err)
+	}
+
+	IP = os.Getenv("IP")
+	PORT = os.Getenv("PORT")
+}
 
 func main() {
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", IP, PORT))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", IP, PORT))
 	if err != nil {
 		log.Fatal(err)
 	}
