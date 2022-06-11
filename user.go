@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"log"
 	"net"
 
 	"github.com/google/uuid"
@@ -35,4 +38,27 @@ func (u *User) GenerateNewID() {
 
 func (u *User) SetName(name string) {
 	u.Name = name
+}
+
+func (u *User) CreateNewReader(room *Room) {
+	go func() {
+		for {
+			n, err := u.Connection.Read(u.Buffer)
+			if err != nil {
+				if err == io.EOF {
+					room.SendMessageToRoom(Message{
+						Sender:  room.Users[0],
+						Content: fmt.Sprintf("%s has left the room\n", u.Name),
+					})
+					return
+				}
+				log.Println(err)
+			}
+
+			room.SendMessageToRoom(Message{
+				Sender:  *u,
+				Content: string(u.Buffer[:n]),
+			})
+		}
+	}()
 }

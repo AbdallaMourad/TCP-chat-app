@@ -28,6 +28,8 @@ func (r *Room) JoinRoom(newUser User) {
 	r.Broadcast(newUserJoinedRoomMessage)
 
 	r.Users = append(r.Users, newUser)
+
+	newUser.CreateNewReader(r)
 }
 
 func (r *Room) SendSystemMessage(message Message, user User) string {
