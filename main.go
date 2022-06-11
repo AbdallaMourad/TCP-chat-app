@@ -53,7 +53,7 @@ func main() {
 			sendMessageToRoom(room, msg)
 			msg.Sender.Buffer = []byte("")
 		case user := <-newUser:
-			appendConnectionToRoom(user, &room)
+			go appendConnectionToRoom(user, &room)
 		}
 	}
 }
