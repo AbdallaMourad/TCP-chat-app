@@ -46,8 +46,9 @@ func (u *User) CreateNewReader(room *Room) {
 			n, err := u.Connection.Read(u.Buffer)
 			if err != nil {
 				if err == io.EOF {
+					room.RemoveUser(u)
 					room.SendMessageToRoom(Message{
-						Sender:  room.Users[0],
+						Sender:  *room.Admin,
 						Content: fmt.Sprintf("%s has left the room\n", u.Name),
 					})
 					return

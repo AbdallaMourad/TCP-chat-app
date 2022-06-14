@@ -30,9 +30,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	system := NewUser("System", nil)
+	system := NewUser("Admin", nil)
 
-	room := NewRoom(*system)
+	room := NewRoom(system)
 	userJoiningChannel := make(chan User)
 
 	go listenToNewConnections(listener, userJoiningChannel)
@@ -40,7 +40,7 @@ func main() {
 	for {
 		select {
 		case user := <-userJoiningChannel:
-			go room.JoinRoom(user)
+			go room.JoinRoom(&user)
 		}
 	}
 }

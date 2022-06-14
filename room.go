@@ -6,33 +6,33 @@ import (
 )
 
 type Room struct {
-	Users []User
+	Admin *User
+	Users map[*User]bool
 }
 
-func NewRoom(system User) *Room {
+func NewRoom(admin *User) *Room {
 	return &Room{
-		Users: []User{system},
+		Admin: admin,
+		Users: make(map[*User]bool),
 	}
 }
 
-func (r *Room) JoinRoom(newUser User) {
-	system := r.Users[0]
-
-	getNameMessage := NewMessage(system, "Name: ")
+func (r *Room) JoinRoom(newUser *User) {
+	getNameMessage := NewMessage(*r.Admin, "Name: ")
 
 	name := r.SendSystemMessage(getNameMessage, newUser)
 	newUser.SetName(name)
 
-	newUserJoinedRoomMessage := NewMessage(system, fmt.Sprintf("%s has joined the room\n", name))
+	newUserJoinedRoomMessage := NewMessage(*r.Admin, fmt.Sprintf("%s has joined the room\n", name))
 
 	r.Broadcast(newUserJoinedRoomMessage)
 
-	r.Users = append(r.Users, newUser)
+	r.Users[newUser] = true
 
 	newUser.CreateNewReader(r)
 }
 
-func (r *Room) SendSystemMessage(message Message, user User) string {
+func (r *Room) SendSystemMessage(message Message, user *User) string {
 	response := make([]byte, 20)
 	user.Connection.Write([]byte(message.Content))
 
@@ -49,10 +49,15 @@ func (r *Room) Broadcast(message Message) {
 }
 
 func (r *Room) SendMessageToRoom(message Message) {
-	for i := 1; i < len(r.Users); i++ {
-		currUser := r.Users[i]
-		if message.Sender.ID != currUser.ID {
-			currUser.Connection.Write(message.GetFormattedMessage())
+	for user := range r.Users {
+		if message.Sender.ID != user.ID {
+			user.Connection.Write(message.GetFormattedMessage())
 		}
+	}
+}
+
+func (r *Room) RemoveUser(user *User) {
+	if _, ok := r.Users[user]; ok {
+		delete(r.Users, user)
 	}
 }
