@@ -35,7 +35,7 @@ func main() {
 	room := NewRoom(*system)
 	userJoiningChannel := make(chan User)
 
-	go listentonewConnections(listener, userJoiningChannel)
+	go listenToNewConnections(listener, userJoiningChannel)
 
 	for {
 		select {
@@ -45,7 +45,7 @@ func main() {
 	}
 }
 
-func listentonewConnections(listener net.Listener, user chan User) {
+func listenToNewConnections(listener net.Listener, user chan User) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
