@@ -1,6 +1,6 @@
 # TCP-chat-app
 
-## Disclamer
+## Why?
 This project was build to understand 
 - How to build a TCP server in Go language.
 - Understand Concurrency control for accepting multiple connections and sending messages in no pre-defined order.
